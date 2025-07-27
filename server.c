@@ -1,3 +1,4 @@
+#include <asm-generic/socket.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -11,6 +12,17 @@ int server_contructor(serving_t* server) {
 
     if ((server->socket = socket(server->domain, server->service, server->protocol)) < 0){
         perror("Fail to connect to socket...\n");
+        return 1;
+    }
+
+    const int enable = 1;
+    if (setsockopt(server->socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
+        perror("Setsockopt(SO_REUSEADDR) failed\n");
+        return 1;
+    }
+
+    if (setsockopt(server->socket, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int)) < 0) {
+        perror("Setsockopt(SO_REUSEADDR) failed\n");
         return 1;
     }
 
