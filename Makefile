@@ -1,13 +1,13 @@
 cc = gcc
 flags = -Wall -Werror -g -Wextra
 
-all: test
+all: serving
 
-test: test.o server.o
-	$(cc) $(flags) -o test test.o server.o
+serving: serving.o server.o
+	$(cc) $(flags) -o serving serving.o server.o
 
-test.o: test.c server.h
-	$(cc) $(flags) -c test.c
+serving.o: serving.c server.h
+	$(cc) $(flags) -c serving.c
 
 server.o: server.c server.h
 	$(cc) $(flags) -c server.c
