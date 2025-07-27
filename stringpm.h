@@ -11,5 +11,6 @@ typedef struct {
 } stringpm_t;
 
 int stringpm_t_concat (stringpm_t* to, stringpm_t* from);
+int stringpm_t_init (stringpm_t* string, const char* value);
 
 #endif

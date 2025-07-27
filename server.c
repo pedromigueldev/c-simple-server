@@ -1,6 +1,5 @@
 #include <asm-generic/errno-base.h>
 #include <asm-generic/socket.h>
-#include <errno.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -9,8 +8,7 @@
 
 int serving_t_launch(
     serving_t* server,
-    int* out_socket_fd,
-    stringpm_t* buffer)
+    int* out_socket_fd)
 {
     int address_length = sizeof(server->address);
     printf("============ WAITING FOR CONNECTION ============\n");
@@ -22,26 +20,6 @@ int serving_t_launch(
         perror("Failed to accept new connection...\n");
         return 1;
     }
-
-    #define PACKET_SIZE 30
-    int bytes;
-    stringpm_t buffering = {
-        .string = malloc(sizeof(char)*PACKET_SIZE),
-        .size = PACKET_SIZE
-    };
-
-    // Set socket non-blocking
-    int flags = fcntl(*out_socket_fd, F_GETFL, 0);
-    fcntl(*out_socket_fd, F_SETFL, flags | O_NONBLOCK);
-
-    do {
-        bytes = recv(*out_socket_fd, buffering.string, PACKET_SIZE, MSG_DONTWAIT);
-        if (bytes == -1) {
-            break;
-        }
-        stringpm_t_concat(buffer, &buffering);
-    } while (1);
-
     return 0;
 }
 

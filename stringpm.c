@@ -19,3 +19,22 @@ int stringpm_t_concat (stringpm_t* to, stringpm_t* from) {
 
     return 0;
 }
+
+int stringpm_t_init (stringpm_t* string, const char* value) {
+    char size = 0;
+    while (*value) {
+        size++;value++;
+    }
+
+    if (string->string == NULL) {
+        string->string = malloc(sizeof(char)*size);
+        string->size = size;
+
+        const char* c = (value-size);
+        for (int i = 0; i < string->size; i++) {
+            string->string[i] = c[i];
+        }
+    }
+
+    return 0;
+}

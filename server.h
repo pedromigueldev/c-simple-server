@@ -8,6 +8,8 @@
 #include <netinet/in.h>
 #include "stringpm.h"
 
+#define SERVING_PACKET_SIZE 800
+
 typedef struct {
     int domain;
     int service;
@@ -21,6 +23,6 @@ typedef struct {
 } serving_t;
 
 int serving_t_contructor(serving_t* server);
-int serving_t_launch(serving_t* server,int* out_socket_fd,stringpm_t* buffer);
+int serving_t_launch(serving_t* server,int* out_socket_fd);
 
 #endif //SERVER_H
