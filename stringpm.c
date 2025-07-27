@@ -1,5 +1,15 @@
 #include "stringpm.h"
 
+void stringpm_t_clear(stringpm_t* string) {
+    printf("freeing value: %s", string->string);
+    if (string->string == NULL)
+        return;
+
+    free(string->string);
+    string->size = 0;
+    return;
+}
+
 int stringpm_t_concat (stringpm_t* to, stringpm_t* from) {
     if (to->size <= 0) {
         to->string = malloc(sizeof(char)*from->size);

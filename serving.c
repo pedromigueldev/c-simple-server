@@ -23,10 +23,15 @@ static serving_t server = {
 };
 
 int read_request (int* socket_fd, stringpm_t* buffer) {
-    stringpm_t buffering = {
+    stringpm_t_auto_free(buffering) = {
         .string = malloc(sizeof(char)*SERVING_PACKET_SIZE),
         .size = SERVING_PACKET_SIZE
     };
+
+    if (buffering.string == NULL) {
+        perror("Error creating memory for internal buffer\n");
+        return 1;
+    }
 
     int bytes = 1;
     do {
@@ -54,9 +59,11 @@ int main (void){
     if (serving_t_contructor(&server))
         exit(1);
 
+
     for (;;){
-        static stringpm_t buffer;
-        static stringpm_t string_response;
+        stringpm_t_auto_free(buffer) = {0};
+        stringpm_t_auto_free(string_response) = {0};
+
         stringpm_t_init(&string_response, "HTTP/1.1 200 OK \r\n\r\nOlá sou Pedro Miguel\n");
 
         int connection_fd = -1;
