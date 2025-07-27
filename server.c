@@ -1,11 +1,51 @@
+#include <asm-generic/errno-base.h>
 #include <asm-generic/socket.h>
+#include <errno.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 #include "server.h"
 
+int serving_t_launch(
+    serving_t* server,
+    int* out_socket_fd,
+    stringpm_t* buffer)
+{
+    int address_length = sizeof(server->address);
+    printf("============ WAITING FOR CONNECTION ============\n");
+    if((*out_socket_fd = accept(
+            server->socket,
+            (struct sockaddr*)&server->address,
+            (socklen_t*)&address_length)) < 0)
+    {
+        perror("Failed to accept new connection...\n");
+        return 1;
+    }
 
-int server_contructor(serving_t* server) {
+    #define PACKET_SIZE 30
+    int bytes;
+    stringpm_t buffering = {
+        .string = malloc(sizeof(char)*PACKET_SIZE),
+        .size = PACKET_SIZE
+    };
+
+    // Set socket non-blocking
+    int flags = fcntl(*out_socket_fd, F_GETFL, 0);
+    fcntl(*out_socket_fd, F_SETFL, flags | O_NONBLOCK);
+
+    do {
+        bytes = recv(*out_socket_fd, buffering.string, PACKET_SIZE, MSG_DONTWAIT);
+        if (bytes == -1) {
+            break;
+        }
+        stringpm_t_concat(buffer, &buffering);
+    } while (1);
+
+    return 0;
+}
+
+int serving_t_contructor(serving_t* server) {
     server->address.sin_family = server->domain;
     server->address.sin_port = htons(server->port);
     server->address.sin_addr.s_addr = htonl(server->interface);
