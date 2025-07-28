@@ -22,6 +22,19 @@ static serving_t server = {
     .backlog = 10
 };
 
+int read_header_body (stringpm_t* header, stringpm_t* body, stringpm_t* from) {
+    stringpm_t_auto_free(tmp);
+    stringpm_t_concat(&tmp, from);
+
+    char* b = strstr(tmp.string, "\r\n\r\n");
+    char* h = tmp.string;
+    h[b-h] = '\0';
+
+    stringpm_t_init(header, h);
+    stringpm_t_init(body, b+1);
+    return 0;
+}
+
 int read_request (int* socket_fd, stringpm_t* buffer) {
     stringpm_t_auto_free(buffering) = {
         .string = malloc(sizeof(char)*SERVING_PACKET_SIZE),
@@ -63,8 +76,7 @@ int main (void){
     for (;;){
         stringpm_t_auto_free(buffer) = {0};
         stringpm_t_auto_free(string_response) = {0};
-
-        stringpm_t_init(&string_response, "HTTP/1.1 200 OK \r\n\r\nOlá sou Pedro Miguel\n");
+        stringpm_t_init(&string_response, "HTTP/1.1 200 OK \r\n\r\nOlá sou Pedro Miguel");
 
         int connection_fd = -1;
 
@@ -73,9 +85,14 @@ int main (void){
             exit(1);
         };
 
+        stringpm_t_auto_free(headers) = {0};
+        stringpm_t_auto_free(body) = {0};
         read_request(&connection_fd, &buffer);
+        read_header_body(&headers, &body, &buffer);
 
-        printf("%s", string_response.string);
+        stringpm_t_concat(&string_response, &body);
+        stringpm_t_concat(&string_response, &headers);
+
         write(connection_fd, string_response.string, string_response.size);
         close(connection_fd);
     }
