@@ -66,11 +66,23 @@ int read_request (int* socket_fd, stringpm_t* buffer) {
     return 0;
 }
 
-int serving_t_run_server (serving_t* server_config) {
+int stringpm_t_compare (stringpm_t* first, stringpm_t* second) {
+    if (first->size != second->size) {
+        return 1;
+    }
+    for (int i = 0; i < first->size; i++) {
+        if (first->string[i] != second->string[i]) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int serving_t_run_server (serving_t* server_config, int PORT) {
     int connection_fd = -1;
 
-    if (serving_t_contructor(server_config))
-        return 1;
+    if (PORT != 0)
+        server_config->port = PORT;
 
     for (;;)
     {
@@ -99,6 +111,13 @@ int serving_t_run_server (serving_t* server_config) {
         stringpm_t_concat(&string_response, &method);
         stringpm_t_concat(&string_response, &url);
 
+
+        for (size_t i = 0; i < server_config->endpoints.capacity; i++) {
+            if (stringpm_t_compare(&server_config->endpoints.paths[i], &url) == 0) {
+                server_config->endpoints.callbacks[i](&buffer, &string_response);
+            }
+        }
+
         write(connection_fd, string_response.string, string_response.size);
         close(connection_fd);
     }
@@ -115,11 +134,64 @@ void sigint_handler(int sig_no) {
     kill(0, SIGINT);
 }
 
+int serving_t_get(serving_t* server, const char* url, serving_t_callback* callback) {
+
+    if (server->endpoints.capacity == 0 || server->endpoints.size == 0) {
+        server->endpoints.capacity = 0;
+        server->endpoints.size = 2;
+
+        server->endpoints.methods = malloc(sizeof(stringpm_t) * server->endpoints.size);
+        server->endpoints.paths = malloc(sizeof(stringpm_t) * server->endpoints.size);
+        server->endpoints.callbacks = malloc(sizeof(stringpm_t) * server->endpoints.size);
+    }
+
+    if (server->endpoints.capacity == server->endpoints.size) {
+        server->endpoints.size *= 2;
+        server->endpoints.methods = realloc(server->endpoints.methods, sizeof(stringpm_t) * server->endpoints.size);
+        server->endpoints.paths = realloc(server->endpoints.paths, sizeof(stringpm_t) * server->endpoints.size);
+        server->endpoints.callbacks = malloc(sizeof(stringpm_t) * server->endpoints.size);
+    }
+
+    if (server->endpoints.methods == NULL || server->endpoints.paths == NULL) {
+        perror("Error when allocating memory for methods");
+        return 1;
+    }
+
+    stringpm_t u = {0};
+    stringpm_t_init(&u, url);
+
+    stringpm_t_concat(&server->endpoints.methods[server->endpoints.capacity], &(stringpm_t) {.size = 3, .string = "GET"});
+    stringpm_t_concat(&server->endpoints.paths[server->endpoints.capacity], &u);
+    server->endpoints.callbacks[server->endpoints.capacity] = callback;
+    server->endpoints.capacity++;
+
+    return 0;
+}
+
+
+void printIt (stringpm_t * req, stringpm_t *res) {
+    (void)(req);
+    (void)(res);
+    printf("Olaaaaaaaaaaaaaaaaaaa\n");
+}
+
+void printIt2 (stringpm_t * req, stringpm_t *res) {
+    (void)(req);
+    (void)(res);
+    printf("Pedro Miguel\n");
+}
+
+#define PORT 6969
 int main (void){
     struct sigaction action;
     memset(&action, 0, sizeof(action));
     action.sa_handler = &sigint_handler;
     sigaction(SIGINT, &action, &old_action);
 
-    return serving_t_run_server(&server);
+    if (serving_t_contructor(&server))
+        return 1;
+
+    serving_t_get(&server, "/get", &printIt);
+    serving_t_get(&server, "/pet", &printIt2);
+    return serving_t_run_server(&server, PORT);
 }
