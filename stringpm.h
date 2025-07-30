@@ -8,8 +8,8 @@
 #define stringpm_t_auto_free(name) stringpm_t name __attribute__((cleanup(stringpm_t_free)))
 
 typedef struct {
-    char* string;
     uint16_t size;
+    char* string;
 } stringpm_t;
 
 int stringpm_t_concat (stringpm_t* to, stringpm_t* from);

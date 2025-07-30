@@ -22,7 +22,18 @@ static serving_t server = {
     .backlog = 10
 };
 
-int read_header_body (stringpm_t* header, stringpm_t* body, stringpm_t* from) {
+int raed_method_url(stringpm_t* header, stringpm_t* method, stringpm_t* url) {
+    stringpm_t_auto_free(tmp);
+    stringpm_t_concat(&tmp, header);
+
+    char * token = strtok(tmp.string, " ");
+    stringpm_t_init(method, token);
+    token = strtok(NULL, " ");
+    stringpm_t_init(url, token);
+    return 0;
+}
+
+int read_header_body (stringpm_t* from, stringpm_t* header, stringpm_t* body) {
     stringpm_t_auto_free(tmp);
     stringpm_t_concat(&tmp, from);
 
@@ -55,6 +66,47 @@ int read_request (int* socket_fd, stringpm_t* buffer) {
     return 0;
 }
 
+int serving_t_run_server (serving_t* server_config) {
+    int connection_fd = -1;
+
+    if (serving_t_contructor(server_config))
+        return 1;
+
+    for (;;)
+    {
+        //create function to clear strings
+        stringpm_t_auto_free(buffer) = {0};
+        stringpm_t_auto_free(string_response) = {0};
+        stringpm_t_auto_free(headers) = {0};
+        stringpm_t_auto_free(body) = {0};
+        stringpm_t_auto_free(method) = {0};
+        stringpm_t_auto_free(url) = {0};
+
+        stringpm_t_init(&string_response, "HTTP/1.1 200 OK \r\n\r\nOlá sou Pedro Miguel");
+
+        if(serving_t_launch(server_config, &connection_fd)) {
+            perror("Failed to launch server...\n");
+            exit(1);
+        };
+
+        read_request(&connection_fd, &buffer);
+        read_header_body(&buffer, &headers, &body );
+        raed_method_url(&headers, &method, &url);
+
+        stringpm_t_concat(&string_response, &body);
+        stringpm_t_concat(&string_response, &headers);
+        stringpm_t_concat(&string_response, &(stringpm_t){.string = "\n", .size = 1}); //leek maybe
+        stringpm_t_concat(&string_response, &method);
+        stringpm_t_concat(&string_response, &url);
+
+        write(connection_fd, string_response.string, string_response.size);
+        close(connection_fd);
+    }
+
+    close(server.socket);
+    return 0;
+}
+
 struct sigaction old_action;
 void sigint_handler(int sig_no) {
     close(server.socket);
@@ -69,33 +121,5 @@ int main (void){
     action.sa_handler = &sigint_handler;
     sigaction(SIGINT, &action, &old_action);
 
-    if (serving_t_contructor(&server))
-        exit(1);
-
-
-    for (;;){
-        stringpm_t_auto_free(buffer) = {0};
-        stringpm_t_auto_free(string_response) = {0};
-        stringpm_t_init(&string_response, "HTTP/1.1 200 OK \r\n\r\nOlá sou Pedro Miguel");
-
-        int connection_fd = -1;
-
-        if(serving_t_launch(&server, &connection_fd)) {
-            perror("Failed to launch server...\n");
-            exit(1);
-        };
-
-        stringpm_t_auto_free(headers) = {0};
-        stringpm_t_auto_free(body) = {0};
-        read_request(&connection_fd, &buffer);
-        read_header_body(&headers, &body, &buffer);
-
-        stringpm_t_concat(&string_response, &body);
-        stringpm_t_concat(&string_response, &headers);
-
-        write(connection_fd, string_response.string, string_response.size);
-        close(connection_fd);
-    }
-    close(server.socket);
-    return 0;
+    return serving_t_run_server(&server);
 }
