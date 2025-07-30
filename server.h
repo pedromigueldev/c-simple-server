@@ -16,7 +16,6 @@ typedef struct serving_t serving_t;
 typedef struct serving_t_endpoints serving_t_endpoints;
 typedef void(serving_t_callback)(stringpm_t* req, stringpm_t* res);
 
-
 struct serving_t_endpoints {
     size_t size;
     size_t capacity;

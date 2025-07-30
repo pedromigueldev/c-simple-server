@@ -2,8 +2,6 @@
 #include <stddef.h>
 
 void stringpm_t_free(stringpm_t* string) {
-    static int count = 0;
-    printf("freeing string number: %d\n", ++count);
     if (string->string == NULL)
         return;
 
@@ -32,7 +30,7 @@ int stringpm_t_concat (stringpm_t* to, stringpm_t* from) {
     return 0;
 }
 
-int stringpm_t_init (stringpm_t* string, const char* value) {
+int stringpm_t_init_after (stringpm_t* string, const char* value) {
     size_t size = 0;
     while (*value) {
         size++;value++;

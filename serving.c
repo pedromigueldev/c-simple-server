@@ -27,9 +27,9 @@ int raed_method_url(stringpm_t* header, stringpm_t* method, stringpm_t* url) {
     stringpm_t_concat(&tmp, header);
 
     char * token = strtok(tmp.string, " ");
-    stringpm_t_init(method, token);
+    stringpm_t_init_after(method, token);
     token = strtok(NULL, " ");
-    stringpm_t_init(url, token);
+    stringpm_t_init_after(url, token);
     return 0;
 }
 
@@ -41,8 +41,8 @@ int read_header_body (stringpm_t* from, stringpm_t* header, stringpm_t* body) {
     char* h = tmp.string;
     h[b-h] = '\0';
 
-    stringpm_t_init(header, h);
-    stringpm_t_init(body, b+1);
+    stringpm_t_init_after(header, h);
+    stringpm_t_init_after(body, b+1);
     return 0;
 }
 
@@ -94,7 +94,7 @@ int serving_t_run_server (serving_t* server_config, int PORT) {
         stringpm_t_auto_free(method) = {0};
         stringpm_t_auto_free(url) = {0};
 
-        stringpm_t_init(&string_response, "HTTP/1.1 200 OK \r\n\r\nOlá sou Pedro Miguel");
+        stringpm_t_init_after(&string_response, "HTTP/1.1 200 OK \r\n\r\n");
 
         if(serving_t_launch(server_config, &connection_fd)) {
             perror("Failed to launch server...\n");
@@ -105,19 +105,21 @@ int serving_t_run_server (serving_t* server_config, int PORT) {
         read_header_body(&buffer, &headers, &body );
         raed_method_url(&headers, &method, &url);
 
-        stringpm_t_concat(&string_response, &body);
-        stringpm_t_concat(&string_response, &headers);
-        stringpm_t_concat(&string_response, &(stringpm_t){.string = "\n", .size = 1}); //leek maybe
-        stringpm_t_concat(&string_response, &method);
-        stringpm_t_concat(&string_response, &url);
+        // stringpm_t_concat(&string_response, &body);
+        // stringpm_t_concat(&string_response, &headers);
+        // stringpm_t_concat(&string_response, &(stringpm_t){.string = "\n", .size = 1}); //leek maybe
+        // stringpm_t_concat(&string_response, &method);
+        // stringpm_t_concat(&string_response, &url);
 
 
         for (size_t i = 0; i < server_config->endpoints.capacity; i++) {
-            if (stringpm_t_compare(&server_config->endpoints.paths[i], &url) == 0) {
+            if (stringpm_t_compare(&server_config->endpoints.methods[i], &method) == 0 &&
+                stringpm_t_compare(&server_config->endpoints.paths[i], &url) == 0)
+            {
                 server_config->endpoints.callbacks[i](&buffer, &string_response);
             }
         }
-
+        printf("%s", string_response.string);
         write(connection_fd, string_response.string, string_response.size);
         close(connection_fd);
     }
@@ -126,16 +128,7 @@ int serving_t_run_server (serving_t* server_config, int PORT) {
     return 0;
 }
 
-struct sigaction old_action;
-void sigint_handler(int sig_no) {
-    close(server.socket);
-    write(STDOUT_FILENO, "\nClosing server with code: %d\n", sig_no);
-    sigaction(SIGINT, &old_action, NULL);
-    kill(0, SIGINT);
-}
-
-int serving_t_get(serving_t* server, const char* url, serving_t_callback* callback) {
-
+int serving_t_set(serving_t* server, const char* http_method, const char* enpoint, serving_t_callback* callback) {
     if (server->endpoints.capacity == 0 || server->endpoints.size == 0) {
         server->endpoints.capacity = 0;
         server->endpoints.size = 2;
@@ -157,41 +150,38 @@ int serving_t_get(serving_t* server, const char* url, serving_t_callback* callba
         return 1;
     }
 
-    stringpm_t u = {0};
-    stringpm_t_init(&u, url);
+    stringpm_t_init(url, enpoint);
+    stringpm_t_init(method, http_method);
 
-    stringpm_t_concat(&server->endpoints.methods[server->endpoints.capacity], &(stringpm_t) {.size = 3, .string = "GET"});
-    stringpm_t_concat(&server->endpoints.paths[server->endpoints.capacity], &u);
+    stringpm_t_concat(&server->endpoints.methods[server->endpoints.capacity], &method);
+    stringpm_t_concat(&server->endpoints.paths[server->endpoints.capacity], &url);
     server->endpoints.callbacks[server->endpoints.capacity] = callback;
     server->endpoints.capacity++;
 
     return 0;
 }
 
-
 void printIt (stringpm_t * req, stringpm_t *res) {
     (void)(req);
     (void)(res);
-    printf("Olaaaaaaaaaaaaaaaaaaa\n");
+    stringpm_t_auto_free_init(re, "This is a response from the GET\n");
+    stringpm_t_concat(res, &re);
 }
 
 void printIt2 (stringpm_t * req, stringpm_t *res) {
     (void)(req);
     (void)(res);
-    printf("Pedro Miguel\n");
+    stringpm_t_auto_free_init(re, "This is a response from the POST\n");
+    stringpm_t_concat(res, &re);
 }
 
 #define PORT 6969
 int main (void){
-    struct sigaction action;
-    memset(&action, 0, sizeof(action));
-    action.sa_handler = &sigint_handler;
-    sigaction(SIGINT, &action, &old_action);
-
     if (serving_t_contructor(&server))
         return 1;
 
-    serving_t_get(&server, "/get", &printIt);
-    serving_t_get(&server, "/pet", &printIt2);
+    serving_t_set(&server, "GET", "/get", &printIt);
+    serving_t_set(&server, "POST","/pet", &printIt2);
+
     return serving_t_run_server(&server, PORT);
 }

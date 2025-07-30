@@ -1,10 +1,16 @@
 #include <asm-generic/errno-base.h>
 #include <asm-generic/socket.h>
 #include <netinet/in.h>
+#include <signal.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include "server.h"
+
+
+static serving_t* __server;
 
 int serving_t_launch(
     serving_t* server,
@@ -23,7 +29,17 @@ int serving_t_launch(
     return 0;
 }
 
+struct sigaction old_action;
+void sigint_handler(int sig_no);
+
 int serving_t_contructor(serving_t* server) {
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = &sigint_handler;
+    sigaction(SIGINT, &action, &old_action);
+
+    __server = server;
+
     server->address.sin_family = server->domain;
     server->address.sin_port = htons(server->port);
     server->address.sin_addr.s_addr = htonl(server->interface);
@@ -55,3 +71,11 @@ int serving_t_contructor(serving_t* server) {
     }
     return 0;
 };
+
+struct sigaction old_action;
+void sigint_handler(int sig_no) {
+    close(__server->socket);
+    write(STDOUT_FILENO, "\nClosing server with code: %d\n", sig_no);
+    sigaction(SIGINT, &old_action, NULL);
+    kill(0, SIGINT);
+}
