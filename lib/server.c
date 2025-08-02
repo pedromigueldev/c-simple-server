@@ -6,9 +6,43 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <fcntl.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include "server.h"
+#include "./stringpm.c"
 
+#define SERVING_PACKET_SIZE 800
+
+typedef struct serving_t serving_t;
+typedef struct serving_t_endpoints serving_t_endpoints;
+typedef struct serving_t_request serving_t_request;
+typedef void(serving_t_callback)(serving_t_request* req, stringpm_t* res);
+
+struct serving_t_endpoints {
+    size_t size;
+    size_t capacity;
+    stringpm_t* methods;
+    stringpm_t* paths;
+    serving_t_callback** callbacks;
+};
+
+struct serving_t_request {
+    stringpm_t* url;
+    stringpm_t** params;
+    stringpm_t** query;
+};
+
+struct serving_t {
+    int domain;
+    int service;
+    int protocol;
+    u_long interface;
+    int port;
+    int backlog;
+    struct sockaddr_in address;
+    int socket;
+    void (*launch)(void);
+    serving_t_endpoints endpoints;
+};
 
 static serving_t* __server;
 

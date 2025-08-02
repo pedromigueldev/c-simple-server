@@ -1,5 +1,19 @@
-#include "stringpm.h"
+#include <stdint.h>
 #include <stddef.h>
+#include <stdlib.h>
+
+typedef struct {
+    uint16_t size;
+    char* string;
+} stringpm_t;
+
+#define stringpm_t_auto_free stringpm_t __attribute__((cleanup(stringpm_t_free)))
+
+#define stringpm_t_init(name, string) stringpm_t name = {0};\
+                                        stringpm_t_init_after(&name, string)\
+
+#define stringpm_t_auto_free_init(name, string) stringpm_t name __attribute__((cleanup(stringpm_t_free))) = {0}; \
+                                                stringpm_t_init_after(&name, string)\
 
 void stringpm_t_free(stringpm_t* string) {
     if (string->string == NULL)
@@ -12,7 +26,7 @@ void stringpm_t_free(stringpm_t* string) {
 
 int stringpm_t_concat (stringpm_t* to, stringpm_t* from) {
     if (to->size <= 0) {
-        to->string = malloc(sizeof(char)*from->size);
+        to->string = malloc(sizeof(char*)*from->size);
         to->size = from->size;
         for (int i = 0; i < from->size; i++) {
             to->string[i] = from->string[i];
