@@ -8,27 +8,27 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "./stringpm.c"
+#include "./strpm.c"
 
 #define SERVING_PACKET_SIZE 800
 
 typedef struct serving_t serving_t;
 typedef struct serving_t_endpoints serving_t_endpoints;
 typedef struct serving_t_request serving_t_request;
-typedef void(serving_t_callback)(serving_t_request* req, stringpm_t* res);
+typedef void(serving_t_callback)(serving_t_request* req, Strpm* res);
 
 struct serving_t_endpoints {
     size_t size;
     size_t capacity;
-    stringpm_t* methods;
-    stringpm_t* paths;
+    Strpm* methods;
+    Strpm* paths;
     serving_t_callback** callbacks;
 };
 
 struct serving_t_request {
-    stringpm_t* url;
-    stringpm_t** params;
-    stringpm_t** query;
+    Strpm* url;
+    Strpm** params;
+    Strpm** query;
 };
 
 struct serving_t {
@@ -105,6 +105,39 @@ int serving_t_contructor(serving_t* server) {
     }
     return 0;
 };
+
+int serving_t_set(serving_t* server, const char* http_method, const char* enpoint, serving_t_callback* callback) {
+    if (server->endpoints.capacity == 0 || server->endpoints.size == 0) {
+        server->endpoints.capacity = 0;
+        server->endpoints.size = 2;
+
+        server->endpoints.methods = calloc(server->endpoints.size, sizeof(Strpm));
+        server->endpoints.paths = calloc(server->endpoints.size, sizeof(Strpm));
+        server->endpoints.callbacks = calloc(server->endpoints.size * sizeof(serving_t_callback), sizeof(serving_t_callback*));
+    }
+
+    if (server->endpoints.capacity == server->endpoints.size) {
+        server->endpoints.size *= 2;
+        server->endpoints.methods = realloc(server->endpoints.methods, sizeof(Strpm) * server->endpoints.size);
+        server->endpoints.paths = realloc(server->endpoints.paths, sizeof(Strpm) * server->endpoints.size);
+        server->endpoints.callbacks = (serving_t_callback **)realloc(server->endpoints.callbacks, server->endpoints.size * sizeof(serving_t_callback));
+    }
+
+    if (server->endpoints.methods == NULL || server->endpoints.paths == NULL) {
+        perror("Error when allocating memory for methods");
+        return 1;
+    }
+
+    Strpm_init(url, enpoint);
+    Strpm_init(method, http_method);
+
+    Strpm_init_after(&server->endpoints.methods[server->endpoints.capacity], http_method);
+    Strpm_init_after(&server->endpoints.paths[server->endpoints.capacity], enpoint);
+    server->endpoints.callbacks[server->endpoints.capacity] = callback;
+    server->endpoints.capacity++;
+
+    return 0;
+}
 
 struct sigaction old_action;
 void sigint_handler(int sig_no) {

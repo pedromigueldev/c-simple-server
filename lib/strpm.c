@@ -5,17 +5,17 @@
 typedef struct {
     uint16_t size;
     char* string;
-} stringpm_t;
+} Strpm;
 
-#define stringpm_t_auto_free stringpm_t __attribute__((cleanup(stringpm_t_free)))
+#define Strpm_auto_free Strpm __attribute__((cleanup(Strpm_free)))
 
-#define stringpm_t_init(name, string) stringpm_t name = {0};\
-                                        stringpm_t_init_after(&name, string)\
+#define Strpm_init(name, string) Strpm name = {0};\
+                                        Strpm_init_after(&name, string)\
 
-#define stringpm_t_auto_free_init(name, string) stringpm_t name __attribute__((cleanup(stringpm_t_free))) = {0}; \
-                                                stringpm_t_init_after(&name, string)\
+#define Strpm_auto_free_init(name, string) Strpm name __attribute__((cleanup(Strpm_free))) = {0}; \
+                                            Strpm_init_after(&name, string)\
 
-void stringpm_t_free(stringpm_t* string) {
+void Strpm_free(Strpm* string) {
     if (string->string == NULL)
         return;
 
@@ -24,7 +24,7 @@ void stringpm_t_free(stringpm_t* string) {
     return;
 }
 
-int stringpm_t_concat (stringpm_t* to, stringpm_t* from) {
+int Strpm_concat (Strpm* to, Strpm* from) {
     if (to->size <= 0) {
         to->string = malloc(sizeof(char*)*from->size);
         to->size = from->size;
@@ -44,7 +44,7 @@ int stringpm_t_concat (stringpm_t* to, stringpm_t* from) {
     return 0;
 }
 
-int stringpm_t_init_after (stringpm_t* string, const char* value) {
+int Strpm_init_after (Strpm* string, const char* value) {
     size_t size = 0;
     while (*value) {
         size++;value++;
@@ -70,5 +70,17 @@ int stringpm_t_init_after (stringpm_t* string, const char* value) {
         }
     }
 
+    return 0;
+}
+
+int Strpm_compare (Strpm* first, Strpm* second) {
+    if (first->size != second->size) {
+        return 1;
+    }
+    for (int i = 0; i < first->size; i++) {
+        if (first->string[i] != second->string[i]) {
+            return 1;
+        }
+    }
     return 0;
 }
