@@ -44,7 +44,7 @@ struct serving_t {
     serving_t_endpoints endpoints;
 };
 
-static serving_t* __server;
+static serving_t* __SERVER__;
 
 int serving_t_launch(
     serving_t* server,
@@ -72,7 +72,14 @@ int serving_t_contructor(serving_t* server) {
     action.sa_handler = &sigint_handler;
     sigaction(SIGINT, &action, &old_action);
 
-    __server = server;
+    __SERVER__ = server;
+    *server = (serving_t) {
+        .domain = AF_INET,
+        .service = SOCK_STREAM,
+        .protocol = 0,
+        .interface = INADDR_ANY,
+        .backlog = 10
+    };
 
     server->address.sin_family = server->domain;
     server->address.sin_port = htons(server->port);
@@ -141,7 +148,7 @@ int serving_t_set(serving_t* server, const char* http_method, const char* enpoin
 
 struct sigaction old_action;
 void sigint_handler(int sig_no) {
-    close(__server->socket);
+    close(__SERVER__->socket);
     write(STDOUT_FILENO, "\nClosing server with code: %d\n", sig_no);
     sigaction(SIGINT, &old_action, NULL);
     kill(0, SIGINT);

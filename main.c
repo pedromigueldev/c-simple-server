@@ -100,39 +100,22 @@ int serving_t_run_server (serving_t* server_config, int PORT) {
     return close(server_config->socket);
 }
 
-void printIt (serving_t_request * req, Strpm *res) {
+void home (serving_t_request * req, Strpm *res) {
     Strpm_auto_free response_text = {0};
-    Strpm_init_after(&response_text, "This is a response from the GET\n");
+    Strpm_init_after(&response_text, "This is the homepage...\n");
 
-    Strpm_concat(&response_text, req->url);
     Strpm_concat(res, &response_text);
 }
 
-void testing2 (serving_t_request * req, Strpm *res) {
-    Strpm_auto_free response_text = {0};
-    Strpm_init_after(&response_text, "This is a response from the POST\n");
-
-    Strpm_concat(&response_text, req->url);
-    Strpm_concat(res, &response_text);
-}
 
 #define PORT 6969
 int main (void){
 
-    static serving_t server = {
-        .domain = AF_INET,
-        .service = SOCK_STREAM,
-        .protocol = 0,
-        .interface = INADDR_ANY,
-        .port = 6969,
-        .backlog = 10
-    };
-
+    serving_t server;
     if (serving_t_contructor(&server))
         return 1;
 
-    serving_t_set(&server, "GET", "/get", &printIt);
-    serving_t_set(&server, "POST", "/get", &testing2);
+    serving_t_set(&server, "GET", "/", &home);
 
     return serving_t_run_server(&server, PORT);
 }
