@@ -59,13 +59,37 @@ typedef struct serving_t_request serving_t_request;
 typedef struct serving_t_response serving_t_response;
 
 struct body {
-    int status;
     char* send;
 };
 
 struct serving_t_response {
+    int status;
+    bool html;
+    bool json;
+    bool text;
     struct body body;
 };
+
+int serving_t_create_response (serving_t_response* response, Strpm * buffer) {
+    Strpm_auto_free tmp = {0};
+
+    tmp.size += asprintf(&tmp.string, " %d OK\r\n", response->status);
+
+    if (response->html || response->text)
+        tmp.size = asprintf(&tmp.string, "%sContent-Type: %s\r\n\r\n", tmp.string, "text/html");
+    if (response->json)
+        tmp.size = asprintf(&tmp.string, "%sContent-Type: %s\r\n\r\n", tmp.string, "application/json");
+
+    tmp.size = asprintf(&tmp.string, "%s%s", tmp.string, response->body.send);
+
+    if (tmp.size < 0) {
+        perror("Unable to construct request\n");
+        exit(EXIT_FAILURE);
+    }
+
+    Strpm_concat(buffer, &tmp);
+    return 0;
+}
 
 int serving_t_run_server (serving_t* server_config, const int PORT) {
     int connection_fd = -1;
@@ -84,7 +108,7 @@ int serving_t_run_server (serving_t* server_config, const int PORT) {
         Strpm_auto_free method = {0};
         Strpm_auto_free url = {0};
 
-        Strpm_init_after(&string_response, "HTTP/1.1 200 OK\nContent-Type: text/html\r\n\r\n");
+        Strpm_init_after(&string_response, "HTTP/1.1");
 
         if(serving_t_launch(server_config, &connection_fd)) {
             perror("Failed to launch server...\n");
@@ -105,14 +129,8 @@ int serving_t_run_server (serving_t* server_config, const int PORT) {
                 server_config->endpoints.callbacks[i](&request, &response);
         }
 
-        if (response.body.send != NULL) {
-            Strpm_auto_free tmp = {0};
-            Strpm_init_after(&tmp, response.body.send);
-            Strpm_concat(&string_response, &tmp);
-        }
-
+        serving_t_create_response(&response, &string_response);
         send(connection_fd, string_response.string, string_response.size, 0);
-
         printf("%s\n%s\n%s\n", Strpm_spit(&string_response), Strpm_spit(&url), Strpm_spit(&headers));
 
         close(connection_fd);
@@ -150,9 +168,12 @@ void home (serving_t_request * req, serving_t_response *res) {
         }
     }
 
-    res->body = (struct body) {
-        .status=200,
-        .send = Strpm_spit(&file_buffer)
+    *res = (serving_t_response) {
+        .status = 200,
+        .html = true,
+        .body = (struct body) {
+            .send = Strpm_spit(&file_buffer)
+        }
     };
 
     fclose(file_pointer);
@@ -163,15 +184,18 @@ void post (serving_t_request * req, serving_t_response *res) {
     Strpm_auto_free response_text = {0};
     Strpm_init_after(&response_text, "This is the post...\n");
 
-    res->body = (struct body) {
-        .status=200,
-        .send = Strpm_spit(&response_text)
+    *res = (serving_t_response) {
+        .status = 200,
+        .text = true,
+        .body = (struct body) {
+            .send = Strpm_spit(&response_text)
+        }
     };
 }
 
 
 #define PORT 6969
-int main (void){
+int main (void) {
     serving_t server;
     serving_t_set(&server, "GET", "/", &home);
     serving_t_set(&server, "POST", "/", &post);

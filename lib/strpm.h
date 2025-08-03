@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 typedef struct {
-    uint16_t size;
+    int16_t size;
     char* string;
 } Strpm;
 

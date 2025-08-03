@@ -66,17 +66,18 @@ int Strpm_init_after (Strpm* string, const char* value) {
         for (int i = 0; i < string->size; i++) {
             string->string[i] = c[i];
         }
-    } else {
-        if (string->size < size){
-            string->size += size;
-            string->string = realloc(string->string, sizeof(char)*string->size);
-        }
-
-        const char* c = (value-size);
-        for (int i = 0; i < string->size; i++) {
-            string->string[i] = c[i];
-        }
     }
+    // else {
+    //     if (string->size < size){
+    //         string->size += size;
+    //         string->string = realloc(string->string, sizeof(char)*string->size);
+    //     }
+
+    //     const char* c = (value-size);
+    //     for (int i = 0; i < string->size; i++) {
+    //         string->string[i] = c[i];
+    //     }
+    // }
 
     return 0;
 }
