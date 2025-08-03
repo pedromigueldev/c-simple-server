@@ -7,10 +7,10 @@
     "label": "Debug native binary",
     "build": {
       "command": "make",
-      "args": ["-j8"],
+      "args": ["server"],
       "cwd": "$ZED_WORKTREE_ROOT"
     },
-    "program": "$ZED_WORKTREE_ROOT/serving",
+    "program": "server",
     "request": "launch",
     "adapter": "CodeLLDB"
   }

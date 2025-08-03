@@ -3,46 +3,13 @@
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "./strpm.c"
-
-#define SERVING_PACKET_SIZE 800
-
-typedef struct serving_t serving_t;
-typedef struct serving_t_endpoints serving_t_endpoints;
-typedef struct serving_t_request serving_t_request;
-typedef void(serving_t_callback)(serving_t_request* req, Strpm* res);
-
-struct serving_t_endpoints {
-    size_t size;
-    size_t capacity;
-    Strpm* methods;
-    Strpm* paths;
-    serving_t_callback** callbacks;
-};
-
-struct serving_t_request {
-    Strpm* url;
-    Strpm** params;
-    Strpm** query;
-};
-
-struct serving_t {
-    int domain;
-    int service;
-    int protocol;
-    u_long interface;
-    int port;
-    int backlog;
-    struct sockaddr_in address;
-    int socket;
-    void (*launch)(void);
-    serving_t_endpoints endpoints;
-};
+#include "./serving.h"
 
 static serving_t* __SERVER__;
 
@@ -78,7 +45,9 @@ int serving_t_contructor(serving_t* server) {
         .service = SOCK_STREAM,
         .protocol = 0,
         .interface = INADDR_ANY,
-        .backlog = 10
+        .backlog = 10,
+        .port = server->port,
+        .endpoints = server->endpoints
     };
 
     server->address.sin_family = server->domain;

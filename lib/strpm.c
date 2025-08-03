@@ -1,19 +1,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
-
-typedef struct {
-    uint16_t size;
-    char* string;
-} Strpm;
-
-#define Strpm_auto_free Strpm __attribute__((cleanup(Strpm_free)))
-
-#define Strpm_init(name, string) Strpm name = {0};\
-                                        Strpm_init_after(&name, string)\
-
-#define Strpm_auto_free_init(name, string) Strpm name __attribute__((cleanup(Strpm_free))) = {0}; \
-                                            Strpm_init_after(&name, string)\
+#include <string.h>
+#include "./strpm.h"
 
 void Strpm_free(Strpm* string) {
     if (string->string == NULL)
@@ -21,8 +10,27 @@ void Strpm_free(Strpm* string) {
 
     free(string->string);
     string->size = 0;
+    string->string = NULL;
     return;
 }
+
+char* Strpm_spit(Strpm * string) {
+    char* out = malloc((string->size + 1) * sizeof(char));
+    for (int i = 0; i < string->size; i++) {
+        out[i] = string->string[i];
+    }
+    out[string->size] = '\0';
+    return out;
+};
+
+int Strpm_sizeof (const char* from) {
+    size_t size = 0;
+    while (*from) {
+        size++;from++;
+    }
+    return size;
+};
+
 
 int Strpm_concat (Strpm* to, Strpm* from) {
     if (to->size <= 0) {

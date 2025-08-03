@@ -1,10 +1,15 @@
 cc = gcc
 flags = -Wall -Werror -g -Wextra -fsanitize=address
+bin=server
 
-all: serving exec
+.PHONY: all
+all: $(bin) exec
 
-serving: main.c lib/server.c lib/stringpm.c
-	$(cc) $(flags) -o serving main.c
+$(bin): lib/serving.o lib/strpm.o main.c
+	$(cc) $(flags) -o $@ $^
+
+%.o: %.c %.h
+	$(cc) $(flags) -c -o $@ $<
 
 exec:
-	./serving
+	./$(bin)
