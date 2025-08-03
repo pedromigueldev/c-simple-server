@@ -11,7 +11,7 @@ typedef struct serving_t serving_t;
 typedef struct serving_t_endpoints serving_t_endpoints;
 typedef struct serving_t_request serving_t_request;
 typedef struct serving_t_response serving_t_response;
-typedef void(serving_t_callback)(serving_t_request* req, serving_t_response* res);
+typedef void (serving_t_callback)(serving_t_request* req, serving_t_response* res);
 
 struct serving_t_endpoints {
     size_t size;
@@ -22,9 +22,11 @@ struct serving_t_endpoints {
 };
 
 struct serving_t_request {
-    Strpm* url;
-    Strpm** params;
-    Strpm** query;
+    Strpm url;
+    Strpm method;
+    Strpm header;
+    Strpm* params;
+    Strpm* query;
 };
 
 struct serving_t {

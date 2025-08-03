@@ -35,7 +35,7 @@ int read_header_body (Strpm* from, Strpm* header, Strpm* body) {
     return 0;
 }
 
-int read_request (int* socket_fd, Strpm* buffer) {
+int serving_t_read_request (int socket_fd, Strpm* buffer) {
     Strpm_auto_free buffering = {
         .string = malloc(sizeof(char)*SERVING_PACKET_SIZE),
         .size = SERVING_PACKET_SIZE
@@ -48,9 +48,14 @@ int read_request (int* socket_fd, Strpm* buffer) {
 
     int bytes = 1;
     do {
-        bytes = recv(*socket_fd, buffering.string, buffering.size, 0);
+        bytes = recv(socket_fd, buffering.string, buffering.size, 0);
         Strpm_concat(buffer, &buffering);
     } while (bytes >= buffering.size);
+
+    if (bytes) {
+        perror("ERROR: Failed to create request buffer\n");
+        return 1;
+    }
 
     return 0;
 }
@@ -58,29 +63,42 @@ int read_request (int* socket_fd, Strpm* buffer) {
 typedef struct serving_t_request serving_t_request;
 typedef struct serving_t_response serving_t_response;
 
-struct body {
-    char* send;
-};
-
 struct serving_t_response {
     int status;
     bool html;
     bool json;
     bool text;
-    struct body body;
+    char* send;
 };
 
+int serving_t_parse_request (Strpm * from, serving_t_request * to) {
+    Strpm headers = {0};
+    Strpm body = {0};
+    Strpm method = {0};
+    Strpm url = {0};
+
+    if (read_header_body(from, &headers, &body)) return 1;
+    if (raed_method_url(&headers, &method, &url)) return 1;
+
+    *to = (serving_t_request) {
+        .url = url,
+        .header = headers,
+        .method = method
+    };
+
+    return 0;
+}
 int serving_t_create_response (serving_t_response* response, Strpm * buffer) {
     Strpm_auto_free tmp = {0};
 
-    tmp.size += asprintf(&tmp.string, " %d OK\r\n", response->status);
+    tmp.size += asprintf(&tmp.string, "HTTP/1.1 %d OK\r\n", response->status);
 
     if (response->html || response->text)
         tmp.size = asprintf(&tmp.string, "%sContent-Type: %s\r\n\r\n", tmp.string, "text/html");
     if (response->json)
         tmp.size = asprintf(&tmp.string, "%sContent-Type: %s\r\n\r\n", tmp.string, "application/json");
 
-    tmp.size = asprintf(&tmp.string, "%s%s", tmp.string, response->body.send);
+    tmp.size = asprintf(&tmp.string, "%s%s", tmp.string, response->send);
 
     if (tmp.size < 0) {
         perror("Unable to construct request\n");
@@ -100,38 +118,33 @@ int serving_t_run_server (serving_t* server_config, const int PORT) {
 
     for (;;)
     {
-        //create function to clear strings instead of recreating and freeing every request
-        Strpm_auto_free buffer = {0};
-        Strpm_auto_free string_response = {0};
-        Strpm_auto_free headers = {0};
-        Strpm_auto_free body = {0};
-        Strpm_auto_free method = {0};
-        Strpm_auto_free url = {0};
-
-        Strpm_init_after(&string_response, "HTTP/1.1");
-
         if(serving_t_launch(server_config, &connection_fd)) {
-            perror("Failed to launch server...\n");
-            exit(1);
+            perror("ERROR: Failed to launch server...\n");
+            break;
         };
 
-        read_request(&connection_fd, &buffer);
-        read_header_body(&buffer, &headers, &body );
-        raed_method_url(&headers, &method, &url);
-        serving_t_request request = {
-            .url = &url,
-        };
+        Strpm_auto_free buffer = {0};
+        if (serving_t_read_request(connection_fd, &buffer)) {
+            perror("ERROR: Read request failed\n");
+            break;
+        }
+
+        serving_t_request request = {0}; // free request strings
+        if (serving_t_parse_request(&buffer, &request)) {
+            perror("ERROR: Parse request failed\n");
+            break;
+        }
+
         serving_t_response response = {0};
-
-
         for (size_t i = 0; i < server_config->endpoints.capacity; i++) {
-            if ((Strpm_compare(&server_config->endpoints.methods[i], &method) == 0) && (Strpm_compare(&server_config->endpoints.paths[i], &url) == 0))
+            if ((Strpm_compare(&server_config->endpoints.methods[i], &request.method) == 0) && (Strpm_compare(&server_config->endpoints.paths[i], &request.url) == 0))
                 server_config->endpoints.callbacks[i](&request, &response);
         }
 
+        Strpm_auto_free string_response = {0};
         serving_t_create_response(&response, &string_response);
         send(connection_fd, string_response.string, string_response.size, 0);
-        printf("%s\n%s\n%s\n", Strpm_spit(&string_response), Strpm_spit(&url), Strpm_spit(&headers));
+        printf("%s\n%s\n%s\n", Strpm_spit(&string_response), Strpm_spit(&request.url), Strpm_spit(&request.header));
 
         close(connection_fd);
     };
@@ -171,9 +184,7 @@ void home (serving_t_request * req, serving_t_response *res) {
     *res = (serving_t_response) {
         .status = 200,
         .html = true,
-        .body = (struct body) {
-            .send = Strpm_spit(&file_buffer)
-        }
+        .send = Strpm_spit(&file_buffer)
     };
 
     fclose(file_pointer);
@@ -187,9 +198,7 @@ void post (serving_t_request * req, serving_t_response *res) {
     *res = (serving_t_response) {
         .status = 200,
         .text = true,
-        .body = (struct body) {
-            .send = Strpm_spit(&response_text)
-        }
+        .send = Strpm_spit(&response_text)
     };
 }
 
@@ -197,7 +206,7 @@ void post (serving_t_request * req, serving_t_response *res) {
 #define PORT 6969
 int main (void) {
     serving_t server;
-    serving_t_set(&server, "GET", "/", &home);
+    serving_t_set(&server, "GET", "/", &home); // create free mecanisms for the strings alocated for functions and methods
     serving_t_set(&server, "POST", "/", &post);
     return serving_t_run_server(&server, PORT);
 }

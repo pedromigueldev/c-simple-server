@@ -24,7 +24,7 @@ int serving_t_launch(
             (struct sockaddr*)&server->address,
             (socklen_t*)&address_length)) < 0)
     {
-        perror("Failed to accept new connection...\n");
+        perror("ERROR: Failed to accept new connection...\n");
         return 1;
     }
     return 0;
