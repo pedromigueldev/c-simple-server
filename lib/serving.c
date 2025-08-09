@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "./serving.h"
+#include "strpm.h"
 
 static serving_t* __SERVER__;
 
@@ -94,9 +95,9 @@ int serving_t_set(serving_t* server, const char* http_method, const char* enpoin
 
     if (server->endpoints.capacity == server->endpoints.size) {
         server->endpoints.size *= 2;
-        server->endpoints.methods = realloc(server->endpoints.methods, sizeof(Strpm) * server->endpoints.size);
-        server->endpoints.paths = realloc(server->endpoints.paths, sizeof(Strpm) * server->endpoints.size);
-        server->endpoints.callbacks = (serving_t_callback **)realloc(server->endpoints.callbacks, server->endpoints.size * sizeof(serving_t_callback));
+        server->endpoints.methods = (Strpm*)realloc(server->endpoints.methods, sizeof(Strpm) * server->endpoints.size);
+        server->endpoints.paths = (Strpm*)realloc(server->endpoints.paths, sizeof(Strpm) * server->endpoints.size);
+        server->endpoints.callbacks = (serving_t_callback **)realloc(server->endpoints.callbacks, server->endpoints.size * sizeof(serving_t_callback*));
     }
 
     if (server->endpoints.methods == NULL || server->endpoints.paths == NULL) {
@@ -107,8 +108,8 @@ int serving_t_set(serving_t* server, const char* http_method, const char* enpoin
     Strpm_init(url, enpoint);
     Strpm_init(method, http_method);
 
-    Strpm_init_after(&server->endpoints.methods[server->endpoints.capacity], http_method);
-    Strpm_init_after(&server->endpoints.paths[server->endpoints.capacity], enpoint);
+    server->endpoints.methods[server->endpoints.capacity] = method;
+    server->endpoints.paths[server->endpoints.capacity] = url;
     server->endpoints.callbacks[server->endpoints.capacity] = callback;
     server->endpoints.capacity++;
 

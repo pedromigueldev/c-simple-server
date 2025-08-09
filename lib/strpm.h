@@ -19,7 +19,7 @@ typedef struct {
 void Strpm_free(Strpm* string);
 int Strpm_sizeof (const char* from);
 int Strpm_concat (Strpm* to, Strpm* from);
-int Strpm_init_after (Strpm* string, const char* value);
+int Strpm_init_after (Strpm* string, const char value[static 1]);
 int Strpm_compare (Strpm* first, Strpm* second);
 char* Strpm_spit (Strpm * string);
 #endif

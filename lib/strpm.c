@@ -52,7 +52,7 @@ int Strpm_concat (Strpm* to, Strpm* from) {
     return 0;
 }
 
-int Strpm_init_after (Strpm* string, const char* value) {
+int Strpm_init_after (Strpm* string, const char value[static 1]) {
     size_t size = 0;
     while (*value) {
         size++;value++;
